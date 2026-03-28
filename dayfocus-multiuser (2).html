@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DayFocus — Multi-User</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Epilogue:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050508;--surface:#0D0D14;--surface2:#12121C;
+  --border:rgba(255,255,255,0.07);--border-bright:rgba(255,255,255,0.14);
+  --text:#E8E6FF;--text-dim:#7875A8;--text-muted:#3D3B5C;
+  --neon:#7C6FFF;--neon2:#FF6B9D;--neon3:#00E5C3;--gold:#FFD166;
+  --danger:#FF4D6D;--success:#00E5C3;
+  --glow-neon:rgba(124,111,255,0.35);--glow-pink:rgba(255,107,157,0.3);--glow-teal:rgba(0,229,195,0.25);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.bg-canvas{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.18;animation:orbFloat 12s ease-in-out infinite}
+.orb-1{width:500px;height:500px;background:var(--neon);top:-200px;left:-150px;animation-delay:0s}
+.orb-2{width:400px;height:400px;background:var(--neon2);bottom:-100px;right:-100px;animation-delay:-4s}
+.orb-3{width:300px;height:300px;background:var(--neon3);top:40%;left:50%;animation-delay:-8s}
+@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(1.05)}66%{transform:translate(-20px,20px) scale(0.95)}}
+.bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(124,111,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,111,255,0.04) 1px,transparent 1px);background-size:60px 60px}
+.shell{position:relative;z-index:1;max-width:960px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding:0 24px 80px}
+
+/* ─── AUTH SCREEN ─── */
+.auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:32px}
+.auth-logo{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--neon),var(--neon2));-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
+.auth-tagline{font-size:0.9rem;color:var(--text-dim);font-style:italic;text-align:center;margin-top:-20px}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:40px;width:100%;max-width:420px}
+.auth-tabs{display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:28px}
+.auth-tab{flex:1;padding:10px;border-radius:9px;border:none;background:none;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.04em;color:var(--text-muted);cursor:pointer;transition:all 0.2s}
+.auth-tab.active{background:var(--surface);color:var(--neon);box-shadow:0 0 0 1px var(--border)}
+.field-group{margin-bottom:20px}
+.field-label{font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;display:block}
+.field-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:0.95rem;color:var(--text);font-family:'Epilogue',sans-serif;outline:none;transition:all 0.25s}
+.field-input:focus{border-color:var(--neon);box-shadow:0 0 0 3px rgba(124,111,255,0.15)}
+.field-input::placeholder{color:var(--text-muted)}
+.auth-btn{width:100%;background:linear-gradient(135deg,var(--neon),var(--neon2));border:none;border-radius:12px;padding:15px;font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.04em;color:white;cursor:pointer;transition:opacity 0.2s,transform 0.15s;margin-top:8px}
+.auth-btn:hover{opacity:0.88}
+.auth-btn:active{transform:scale(0.98)}
+.auth-error{font-size:0.78rem;color:var(--danger);margin-top:12px;text-align:center;min-height:20px}
+.auth-strength{height:3px;border-radius:100px;background:var(--surface2);margin-top:8px;overflow:hidden}
+.auth-strength-fill{height:100%;border-radius:100px;transition:width 0.3s,background 0.3s}
+
+/* ─── TOPBAR ─── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:28px 0 0;margin-bottom:56px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-name{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;background:linear-gradient(135deg,var(--neon),var(--neon2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:var(--neon3);box-shadow:0 0 10px var(--neon3);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.timer-chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:8px 16px;font-family:'Syne',monospace;font-size:0.82rem;font-weight:700;letter-spacing:0.04em;color:var(--neon3)}
+.timer-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--neon3);box-shadow:0 0 8px var(--neon3);animation:blink 1.5s ease infinite}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:var(--text-dim);cursor:pointer;transition:all 0.2s}
+.user-chip:hover{border-color:var(--danger);color:var(--danger)}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--neon),var(--neon2));display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:800;color:white}
+
+/* ─── HERO ─── */
+.hero{margin-bottom:64px}
+.hero-eyebrow{display:flex;align-items:center;gap:10px;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:16px}
+.hero-eyebrow::before{content:'';display:block;width:28px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon)}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(2.8rem,7vw,5.5rem);font-weight:800;line-height:0.95;letter-spacing:-0.03em;margin-bottom:24px}
+.hero-title .line1{color:var(--text);display:block}
+.hero-title .line2{background:linear-gradient(135deg,var(--neon) 0%,var(--neon2) 60%,var(--gold) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;display:block}
+.hero-subtitle{font-size:1rem;font-weight:300;color:var(--text-dim);font-style:italic;max-width:420px;line-height:1.6}
+
+/* ─── STAT ROW ─── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:48px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color 0.3s,transform 0.3s}
+.stat-card::after{content:'';position:absolute;inset:0;border-radius:20px;opacity:0;transition:opacity 0.3s}
+.stat-card:hover{transform:translateY(-3px);border-color:var(--border-bright)}
+.stat-card.c1::after{background:radial-gradient(circle at 50% 0%,var(--glow-neon),transparent 70%)}
+.stat-card.c2::after{background:radial-gradient(circle at 50% 0%,var(--glow-pink),transparent 70%)}
+.stat-card.c3::after{background:radial-gradient(circle at 50% 0%,var(--glow-teal),transparent 70%)}
+.stat-card:hover::after{opacity:1}
+.stat-label{font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.stat-value{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+.stat-card.c1 .stat-value{color:var(--neon)}
+.stat-card.c2 .stat-value{color:var(--neon2)}
+.stat-card.c3 .stat-value{color:var(--neon3)}
+.stat-sub{font-size:0.72rem;color:var(--text-dim);margin-top:4px}
+
+/* ─── SECTION LABEL ─── */
+.section-label{font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ─── PROGRESS ─── */
+.progress-zone{margin-bottom:40px}
+.progress-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.progress-pct{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;background:linear-gradient(135deg,var(--neon),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.progress-sub{font-size:0.78rem;color:var(--text-dim);text-align:right;padding-bottom:4px}
+.progress-track{height:8px;background:var(--surface2);border-radius:100px;overflow:visible;position:relative;border:1px solid var(--border)}
+.progress-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--neon),var(--neon2),var(--gold));transition:width 0.7s cubic-bezier(0.22,0.97,0.36,1);position:relative;box-shadow:0 0 16px var(--glow-neon);overflow:visible}
+.progress-fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:white;box-shadow:0 0 12px var(--neon),0 0 4px var(--neon2);border:2px solid var(--neon)}
+
+/* ─── INPUT ─── */
+.input-zone{margin-bottom:40px}
+.input-frame{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color 0.25s,box-shadow 0.25s}
+.input-frame:focus-within{border-color:var(--neon);box-shadow:0 0 0 3px rgba(124,111,255,0.15),0 0 30px rgba(124,111,255,0.08)}
+.goal-input{flex:1;background:transparent;border:none;outline:none;padding:18px 22px;font-size:0.97rem;color:var(--text);font-family:'Epilogue',sans-serif}
+.goal-input::placeholder{color:var(--text-muted)}
+.add-btn{background:linear-gradient(135deg,var(--neon),var(--neon2));border:none;padding:12px 28px;margin:6px;border-radius:12px;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.04em;color:white;cursor:pointer;display:flex;align-items:center;gap:8px;transition:opacity 0.2s,transform 0.15s;white-space:nowrap}
+.add-btn:hover{opacity:0.88}
+.add-btn:active{transform:scale(0.97)}
+.input-hint{font-size:0.7rem;color:var(--text-muted);margin-top:10px;padding-left:4px}
+.input-hint kbd{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-family:inherit;font-size:0.65rem;color:var(--text-dim)}
+
+/* ─── GOALS ─── */
+.goals-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.goals-title-wrap{display:flex;align-items:center;gap:10px}
+.goals-count-badge{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:3px 10px;font-size:0.7rem;font-family:'Syne',sans-serif;font-weight:700;color:var(--neon)}
+.clear-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-family:'Epilogue',sans-serif;font-size:0.72rem;color:var(--text-muted);cursor:pointer;transition:all 0.2s}
+.clear-btn:hover{border-color:var(--danger);color:var(--danger);background:rgba(255,77,109,0.06)}
+.goals-list{display:flex;flex-direction:column;gap:10px}
+.goal-item{display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);animation:itemIn 0.4s cubic-bezier(0.22,0.97,0.36,1) both;position:relative;overflow:hidden}
+.goal-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--neon),var(--neon2));opacity:0;transition:opacity 0.25s}
+.goal-item:hover{border-color:var(--border-bright);transform:translateX(4px)}
+.goal-item:hover::before{opacity:1}
+.goal-item.done{opacity:0.45}
+.goal-item.done::before{background:var(--success);opacity:1}
+@keyframes itemIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cb-wrap{flex-shrink:0;width:24px;height:24px;cursor:pointer;position:relative}
+.cb-wrap input{position:absolute;opacity:0;width:0;height:0}
+.cb-box{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--border-bright);background:var(--surface2);display:flex;align-items:center;justify-content:center;transition:all 0.2s;cursor:pointer}
+.cb-wrap input:checked~.cb-box{background:var(--success);border-color:var(--success);box-shadow:0 0 12px var(--glow-teal)}
+.cb-box svg{opacity:0;transform:scale(0.5) rotate(-10deg);transition:all 0.2s}
+.cb-wrap input:checked~.cb-box svg{opacity:1;transform:scale(1) rotate(0deg)}
+.goal-text{flex:1;font-size:0.95rem;color:var(--text);line-height:1.4;word-break:break-word;transition:all 0.25s}
+.goal-text.done-text{text-decoration:line-through;color:var(--text-muted)}
+.goal-idx{font-family:'Syne',sans-serif;font-size:0.65rem;font-weight:700;color:var(--text-muted);letter-spacing:0.06em;flex-shrink:0}
+.del-btn{background:none;border:none;padding:6px;border-radius:8px;color:transparent;cursor:pointer;transition:all 0.2s;flex-shrink:0;display:flex;align-items:center}
+.goal-item:hover .del-btn{color:var(--text-muted)}
+.del-btn:hover{color:var(--danger) !important;background:rgba(255,77,109,0.1)}
+.done-divider{display:flex;align-items:center;gap:10px;margin:6px 0}
+.done-divider-line{flex:1;height:1px;background:var(--border)}
+.done-divider-txt{font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted)}
+.empty-state{text-align:center;padding:60px 24px;color:var(--text-muted)}
+.empty-icon{font-family:'Syne',sans-serif;font-size:3.5rem;font-weight:800;background:linear-gradient(135deg,var(--neon),var(--neon2));-webkit-background-clip:text;background-clip:text;color:transparent;display:block;margin-bottom:14px;opacity:0.4}
+.empty-text{font-size:0.9rem;font-style:italic}
+.all-done{display:none;text-align:center;padding:24px;background:linear-gradient(135deg,rgba(0,229,195,0.08),rgba(124,111,255,0.08));border:1px solid rgba(0,229,195,0.2);border-radius:16px;margin-bottom:12px;animation:itemIn 0.5s ease both}
+.all-done.show{display:block}
+.all-done-text{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--neon3)}
+.all-done-sub{font-size:0.82rem;color:var(--text-dim);margin-top:4px;font-style:italic}
+
+/* ─── QUOTE ─── */
+.quote-zone{margin-top:56px;padding:32px 36px;background:var(--surface);border:1px solid var(--border);border-radius:24px;position:relative;overflow:hidden}
+.quote-zone::before{content:'"';position:absolute;top:-10px;left:24px;font-family:'Syne',sans-serif;font-size:8rem;font-weight:800;color:var(--neon);opacity:0.07;line-height:1;pointer-events:none}
+.quote-text{font-size:1.1rem;font-weight:300;font-style:italic;color:var(--text);line-height:1.65;margin-bottom:16px;transition:opacity 0.4s}
+.quote-author{font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--neon);transition:opacity 0.4s}
+.quote-actions{display:flex;justify-content:flex-end;margin-top:20px}
+.quote-refresh-btn{background:none;border:1px solid var(--border);border-radius:100px;padding:8px 20px;font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:8px}
+.quote-refresh-btn:hover{border-color:var(--neon);color:var(--neon);box-shadow:0 0 14px var(--glow-neon)}
+.quote-refresh-btn svg{transition:transform 0.4s}
+.quote-refresh-btn:active svg{transform:rotate(180deg)}
+
+/* ─── FOOTER ─── */
+.footer{margin-top:64px;padding-top:28px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.footer-brand{font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.06em;color:var(--text-dim)}
+.footer-brand .name{background:linear-gradient(135deg,var(--neon),var(--neon2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.footer-copy{font-size:0.68rem;color:var(--text-muted)}
+.footer-version{font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:4px 12px}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:36px;right:36px;background:var(--surface2);border:1px solid var(--border-bright);color:var(--text);padding:12px 22px;border-radius:12px;font-size:0.82rem;font-weight:500;z-index:900;opacity:0;transform:translateY(12px);transition:all 0.3s cubic-bezier(0.22,0.97,0.36,1);box-shadow:0 8px 30px rgba(0,0,0,0.4);pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ─── CONFETTI ─── */
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:800;overflow:hidden}
+.cp{position:absolute;top:-10px;border-radius:2px;animation:cpFall linear forwards}
+@keyframes cpFall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+/* ─── LOADING ─── */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--neon);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.1em;color:var(--text-muted)}
+
+@media(max-width:600px){
+  .shell{padding:0 16px 60px}
+  .topbar{margin-bottom:36px}
+  .hero-title{font-size:2.5rem}
+  .stat-row{grid-template-columns:1fr 1fr}
+  .stat-row>.stat-card:last-child{grid-column:span 2}
+  .footer{flex-direction:column;align-items:flex-start;gap:8px}
+  .quote-zone{padding:24px 22px}
+  .topbar-right{gap:8px}
+  .timer-chip{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-canvas">
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Initializing DayFocus...</div>
+</div>
+
+<!-- Auth Screen -->
+<div class="shell" id="authScreen" style="display:none">
+  <div class="auth-screen">
+    <div>
+      <div class="auth-logo">DayFocus</div>
+      <div class="auth-tagline">Your personal productivity command center</div>
+    </div>
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab" id="tabReg" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginForm">
+        <div class="field-group">
+          <label class="field-label">Username</label>
+          <input class="field-input" id="loginUser" type="text" placeholder="Enter your username" autocomplete="username">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <input class="field-input" id="loginPass" type="password" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button class="auth-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+        <div class="auth-error" id="loginError"></div>
+      </div>
+
+      <!-- Register Form -->
+      <div id="registerForm" style="display:none">
+        <div class="field-group">
+          <label class="field-label">Username</label>
+          <input class="field-input" id="regUser" type="text" placeholder="Choose a username" autocomplete="username">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <input class="field-input" id="regPass" type="password" placeholder="Create a strong password" autocomplete="new-password" oninput="checkStrength(this.value)">
+          <div class="auth-strength"><div class="auth-strength-fill" id="strengthBar" style="width:0%"></div></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Confirm Password</label>
+          <input class="field-input" id="regPass2" type="password" placeholder="Repeat your password" autocomplete="new-password">
+        </div>
+        <button class="auth-btn" id="regBtn" onclick="doRegister()">Create Account</button>
+        <div class="auth-error" id="regError"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="shell" id="appScreen" style="display:none">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">DayFocus</span>
+      <span class="brand-dot"></span>
+    </div>
+    <div class="topbar-right">
+      <div class="timer-chip" id="timerChip">00:00:00</div>
+      <div class="user-chip" id="userChip" onclick="doLogout()" title="Click to logout">
+        <div class="user-avatar" id="userAvatar"></div>
+        <span id="userChipName"></span>
+        &nbsp;· Logout
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-eyebrow" id="heroDate">Today's session</div>
+    <h1 class="hero-title">
+      <span class="line1">Make today</span>
+      <span class="line2" id="heroGreeting">count.</span>
+    </h1>
+    <p class="hero-subtitle">One focused day outperforms a week of distraction. Set your goals, track your wins.</p>
+  </section>
+
+  <div class="stat-row">
+    <div class="stat-card c1">
+      <div class="stat-label">Total Goals</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">for today</div>
+    </div>
+    <div class="stat-card c2">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value" id="statDone">0</div>
+      <div class="stat-sub">victories</div>
+    </div>
+    <div class="stat-card c3">
+      <div class="stat-label">Progress</div>
+      <div class="stat-value" id="statPct">0%</div>
+      <div class="stat-sub">of the mission</div>
+    </div>
+  </div>
+
+  <div class="progress-zone">
+    <div class="section-label">Mission progress</div>
+    <div class="progress-header">
+      <div style="font-size:0.72rem;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;">Completion rate</div>
+      <div style="text-align:right">
+        <div class="progress-pct" id="progressPct">0%</div>
+        <div class="progress-sub" id="progressSub">0 of 0 goals done</div>
+      </div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="input-zone">
+    <div class="section-label">Add a goal</div>
+    <div class="input-frame">
+      <input class="goal-input" id="goalInput" type="text" placeholder="What do you want to accomplish today?" autocomplete="off">
+      <button class="add-btn" id="addBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add
+      </button>
+    </div>
+    <div class="input-hint">Press <kbd>↵ Enter</kbd> to add quickly</div>
+  </div>
+
+  <div class="goals-zone">
+    <div class="goals-controls">
+      <div class="goals-title-wrap">
+        <div class="section-label" style="margin-bottom:0;">Goals</div>
+        <div class="goals-count-badge" id="activeCount">0 active</div>
+      </div>
+      <button class="clear-btn" id="clearBtn">Clear done</button>
+    </div>
+    <div class="all-done" id="allDone">
+      <div class="all-done-text">🎉 All goals crushed!</div>
+      <div class="all-done-sub">You're absolutely unstoppable today. — DayFocus</div>
+    </div>
+    <div class="goals-list" id="goalsList"></div>
+  </div>
+
+  <div class="quote-zone">
+    <p class="quote-text" id="quoteText">The secret of getting ahead is getting started.</p>
+    <div class="quote-author" id="quoteAuthor">— Mark Twain</div>
+    <div class="quote-actions">
+      <button class="quote-refresh-btn" id="quoteRefreshBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        New quote
+      </button>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-brand">© 2026 <span class="name">Md Siyam Fahim</span> — All rights reserved</div>
+    <div class="footer-copy">Built with focus. Designed for winners.</div>
+    <div class="footer-version">DayFocus v4.0</div>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="confetti-wrap" id="confettiWrap"></div>
+
+<script>
+// ─── CRYPTO UTILS ─── (fast sync hash, no async overhead)
+function hashPassword(password) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < password.length; i++) {
+    h ^= password.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  // second pass with salt
+  let h2 = 0x2166f619;
+  for (let i = password.length - 1; i >= 0; i--) {
+    h2 ^= password.charCodeAt(i);
+    h2 = Math.imul(h2, 0x01000193) >>> 0;
+  }
+  return (h >>> 0).toString(16).padStart(8,'0') + (h2 >>> 0).toString(16).padStart(8,'0') + password.length.toString(16);
+}
+
+// ─── STORAGE KEYS ───
+function usersKey() { return 'df4_users'; }
+function goalsKey(username) { return 'df4_goals_' + username.toLowerCase(); }
+function sessionKey() { return 'df4_session'; }
+
+// ─── STATE ───
+let currentUser = null;
+let goals = [];
+
+// ─── QUOTES ───
+const quotes = [
+  {t:"The secret of getting ahead is getting started.",a:"Mark Twain"},
+  {t:"It always seems impossible until it's done.",a:"Nelson Mandela"},
+  {t:"You don't have to be great to start, but you have to start to be great.",a:"Zig Ziglar"},
+  {t:"Do what you can, with what you have, where you are.",a:"Theodore Roosevelt"},
+  {t:"Small daily improvements are the key to staggering long-term results.",a:"Robin Sharma"},
+  {t:"The only way to do great work is to love what you do.",a:"Steve Jobs"},
+  {t:"Action is the foundational key to all success.",a:"Pablo Picasso"},
+  {t:"Success is the sum of small efforts, repeated day in and day out.",a:"Robert Collier"},
+  {t:"The future depends on what you do today.",a:"Mahatma Gandhi"},
+  {t:"Don't watch the clock; do what it does — keep going.",a:"Sam Levenson"},
+  {t:"What you do today can improve all your tomorrows.",a:"Ralph Marston"},
+  {t:"Believe you can and you're halfway there.",a:"Theodore Roosevelt"},
+];
+let qIdx = new Date().getDate() % quotes.length;
+
+// ─── HELPERS ───
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s) { return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// ─── USER STORAGE ───
+function getUsers() {
+  try {
+    const raw = localStorage.getItem(usersKey());
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+  } catch { return {}; }
+}
+
+function saveUsers(users) {
+  try {
+    localStorage.setItem(usersKey(), JSON.stringify(users));
+  } catch(e) {
+    throw new Error('Failed to save users: ' + e.message);
+  }
+}
+
+function getUserGoals(username) {
+  try {
+    const raw = localStorage.getItem(goalsKey(username));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch { return null; }
+}
+
+function saveUserGoals(username, goals) {
+  try {
+    localStorage.setItem(goalsKey(username), JSON.stringify(goals));
+  } catch(e) {
+    throw new Error('Failed to save goals: ' + e.message);
+  }
+}
+
+// ─── SESSION ───
+function getSession() {
+  try { return JSON.parse(localStorage.getItem(sessionKey())); } catch { return null; }
+}
+function saveSession(username) {
+  localStorage.setItem(sessionKey(), JSON.stringify({username, ts: Date.now()}));
+}
+function clearSession() { localStorage.removeItem(sessionKey()); }
+
+// ─── AUTH LOGIC ───
+function switchTab(tab) {
+  document.getElementById('loginForm').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? '' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabReg').classList.toggle('active', tab==='register');
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('regError').textContent = '';
+}
+
+function checkStrength(pw) {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const bar = document.getElementById('strengthBar');
+  const colors = ['#FF4D6D','#FF6B9D','#FFD166','#00E5C3'];
+  bar.style.width = (score * 25) + '%';
+  bar.style.background = colors[score-1] || 'transparent';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!username || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  const fail = (msg) => { errEl.textContent = msg; btn.textContent = 'Sign In'; btn.disabled = false; };
+  try {
+    const users = getUsers();
+    const ukey = username.toLowerCase();
+    if (!users[ukey]) { fail('Account not found. Please register.'); return; }
+    const hash = hashPassword(password);
+    if (users[ukey].hash !== hash) { fail('Incorrect password.'); return; }
+    saveSession(ukey);
+    initApp(ukey, users[ukey].displayName);
+  } catch(e) {
+    console.error('Login error:', e);
+    fail('Something went wrong. Try again.');
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value;
+  const password2 = document.getElementById('regPass2').value;
+  const errEl = document.getElementById('regError');
+  errEl.textContent = '';
+  if (!username || !password || !password2) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (username.length < 3) { errEl.textContent = 'Username must be at least 3 characters.'; return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) { errEl.textContent = 'Username: letters, numbers, underscore only.'; return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password !== password2) { errEl.textContent = 'Passwords do not match.'; return; }
+  const btn = document.getElementById('regBtn');
+  btn.textContent = 'Creating...'; btn.disabled = true;
+  try {
+    const users = getUsers();
+    const ukey = username.toLowerCase();
+    if (users[ukey]) {
+      errEl.textContent = 'Username already taken.';
+      btn.textContent = 'Create Account'; btn.disabled = false;
+      return;
+    }
+    const hash = hashPassword(password);
+    const defaultGoals = [
+      {id:uid(),text:'Define your #1 priority for today',done:false},
+      {id:uid(),text:'Complete one deep work session (90 min)',done:false},
+      {id:uid(),text:'Step outside for 15 minutes',done:false},
+    ];
+    users[ukey] = { hash, displayName: username, createdAt: Date.now() };
+    saveUsers(users); saveUserGoals(ukey, defaultGoals);
+    saveSession(ukey);
+    goals = defaultGoals;
+    initApp(ukey, username, true);
+    // success — no finally reset needed (app screen takes over)
+  } catch(e) {
+    console.error('Register error:', e);
+    errEl.textContent = 'Something went wrong: ' + (e.message || 'Try again.');
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  }
+}
+
+async function doLogout() {
+  if (!confirm('Log out of DayFocus?')) return;
+  clearSession();
+  currentUser = null;
+  goals = [];
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = '';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  switchTab('login');
+  showToast('Logged out successfully');
+}
+
+// ─── APP INIT ───
+function initApp(username, displayName, goalsPreloaded) {
+  currentUser = { username, displayName };
+
+  // If goals already preloaded by doRegister, skip the extra fetch
+  if (!goalsPreloaded) {
+    let savedGoals = getUserGoals(username);
+    if (!savedGoals) {
+      savedGoals = [
+        {id:uid(),text:'Define your #1 priority for today',done:false},
+        {id:uid(),text:'Complete one deep work session (90 min)',done:false},
+        {id:uid(),text:'Step outside for 15 minutes',done:false},
+      ];
+      saveUserGoals(username, savedGoals);
+    }
+    goals = savedGoals.filter(g => g && g.id).map(g => ({id:g.id,text:g.text||'',done:!!g.done}));
+  } else {
+    // Sanitize preloaded goals from doRegister
+    goals = goals.filter(g => g && g.id).map(g => ({id:g.id,text:g.text||'',done:!!g.done}));
+  }
+
+  // Update UI
+  const initials = displayName.slice(0,2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userChipName').textContent = displayName;
+
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = '';
+
+  render();
+  updateHero();
+  updateTimer();
+  showQuote(qIdx);
+}
+
+// ─── SAVE GOALS ───
+function save() {
+  if (currentUser) saveUserGoals(currentUser.username, goals);
+}
+
+// ─── RENDER ───
+function render() {
+  const list = document.getElementById('goalsList');
+  const active = goals.filter(g => !g.done);
+  const done = goals.filter(g => g.done);
+
+  document.getElementById('activeCount').textContent = active.length + ' active';
+
+  if (!goals.length) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">◉</span><p class="empty-text">No goals yet — write your first mission above</p></div>`;
+  } else {
+    let html = '';
+    active.forEach((g,i) => { html += goalHTML(g, i+1); });
+    if (done.length) {
+      html += `<div class="done-divider"><div class="done-divider-line"></div><div class="done-divider-txt">Completed</div><div class="done-divider-line"></div></div>`;
+      done.forEach(g => { html += goalHTML(g, null); });
+    }
+    list.innerHTML = html;
+
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const id = cb.closest('.goal-item').dataset.id;
+        const g = goals.find(x => x.id===id);
+        if (!g) return;
+        g.done = cb.checked;
+        save(); render(); updateStats();
+        if (g.done) checkAllDone();
+      });
+    });
+
+    list.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('.goal-item').dataset.id;
+        goals = goals.filter(x => x.id!==id);
+        save(); render(); updateStats();
+        showToast('Goal removed');
+      });
+    });
+  }
+
+  updateStats();
+  const total = goals.length, done2 = goals.filter(g=>g.done).length;
+  const banner = document.getElementById('allDone');
+  if (total>0 && done2===total) banner.classList.add('show');
+  else banner.classList.remove('show');
+}
+
+function goalHTML(g, num) {
+  return `<div class="goal-item ${g.done?'done':''}" data-id="${g.id}">
+    <label class="cb-wrap">
+      <input type="checkbox" ${g.done?'checked':''}>
+      <div class="cb-box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </label>
+    <div class="goal-text ${g.done?'done-text':''}">${esc(g.text)}</div>
+    ${num ? `<div class="goal-idx">${String(num).padStart(2,'0')}</div>` : ''}
+    <button class="del-btn" title="Remove">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function updateStats() {
+  const total = goals.length;
+  const done = goals.filter(g=>g.done).length;
+  const pct = total ? Math.round((done/total)*100) : 0;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statPct').textContent = pct+'%';
+  document.getElementById('progressPct').textContent = pct+'%';
+  document.getElementById('progressSub').textContent = `${done} of ${total} goal${total!==1?'s':''} done`;
+  document.getElementById('progressFill').style.width = pct+'%';
+}
+
+function checkAllDone() {
+  if (goals.length && goals.every(g=>g.done)) {
+    spawnConfetti();
+    showToast('🏆 All goals complete!');
+  }
+}
+
+function addGoal() {
+  const inp = document.getElementById('goalInput');
+  const text = inp.value.trim();
+  if (!text) { inp.style.color='var(--neon2)'; setTimeout(()=>inp.style.color='',500); return; }
+  goals.unshift({id:uid(),text,done:false});
+  save(); render();
+  inp.value=''; inp.focus();
+  showToast('Goal added ✓');
+}
+
+// ─── TIMER & HERO ───
+function updateTimer() {
+  const now = new Date();
+  const mid = new Date(now); mid.setHours(24,0,0,0);
+  const d = mid - now;
+  const h = String(Math.floor(d/3600000)).padStart(2,'0');
+  const m = String(Math.floor((d%3600000)/60000)).padStart(2,'0');
+  const s = String(Math.floor((d%60000)/1000)).padStart(2,'0');
+  document.getElementById('timerChip').textContent = `${h}:${m}:${s}`;
+}
+
+function updateHero() {
+  const now = new Date();
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('heroDate').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} · Your session`;
+  const h = now.getHours();
+  document.getElementById('heroGreeting').textContent = h<12?'rise & shine.':h<17?'stay sharp.':h<21?'finish strong.':'end well.';
+}
+
+function showQuote(idx) {
+  const q = quotes[idx%quotes.length];
+  const t=document.getElementById('quoteText'), a=document.getElementById('quoteAuthor');
+  t.style.opacity='0'; a.style.opacity='0';
+  setTimeout(()=>{
+    t.textContent=q.t; a.textContent='— '+q.a;
+    t.style.transition='opacity 0.5s'; a.style.transition='opacity 0.5s';
+    t.style.opacity='1'; a.style.opacity='1';
+  },220);
+}
+
+let toastT;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function spawnConfetti() {
+  const wrap=document.getElementById('confettiWrap');
+  const cols=['#7C6FFF','#FF6B9D','#00E5C3','#FFD166','#FFFFFF'];
+  for(let i=0;i<80;i++){
+    const p=document.createElement('div');
+    p.className='cp';
+    const sz=Math.random()*9+4;
+    p.style.cssText=`left:${Math.random()*100}vw;background:${cols[Math.floor(Math.random()*cols.length)]};width:${sz}px;height:${sz}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${Math.random()*2+1.5}s;animation-delay:${Math.random()*0.8}s;opacity:1;`;
+    wrap.appendChild(p);
+    setTimeout(()=>p.remove(),4500);
+  }
+}
+
+// ─── EVENT LISTENERS ───
+document.getElementById('addBtn').addEventListener('click', addGoal);
+document.getElementById('goalInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addGoal(); });
+document.getElementById('clearBtn').addEventListener('click', async ()=>{
+  const n=goals.filter(g=>g.done).length;
+  goals=goals.filter(g=>!g.done);
+  save(); render();
+  if(n) showToast(`Cleared ${n} completed goal${n!==1?'s':''}`);
+});
+document.getElementById('quoteRefreshBtn').addEventListener('click', ()=>{
+  qIdx=(qIdx+1)%quotes.length;
+  showQuote(qIdx);
+});
+
+// Enter key for auth forms
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('regPass2').addEventListener('keydown', e=>{ if(e.key==='Enter') doRegister(); });
+
+setInterval(updateTimer, 1000);
+
+// ─── STARTUP ───
+async function startup() {
+  // Check for existing session
+  const session = getSession();
+  if (session && session.username) {
+    try {
+      const users = getUsers();
+      const u = users[session.username];
+      if (u) {
+        initApp(session.username, u.displayName);
+        document.getElementById('loadingOverlay').style.display='none';
+        return;
+      }
+    } catch(e) {}
+    clearSession();
+  }
+  document.getElementById('loadingOverlay').style.display='none';
+  document.getElementById('authScreen').style.display='';
+}
+
+startup();
+</script>
+</body>
+</html>
